@@ -10,13 +10,14 @@ import (
 	"time"
 
 	"github.com/golang/gddo/httputil/header"
+	"github.com/gorilla/mux"
 )
 
 const postDir = "/links"
 
 var (
-	ShortUrlID string
-	RedirectURL string
+	shortUrlID  string
+	redirectURL string
 )
 
 type Handlers struct {
@@ -35,17 +36,11 @@ type dataUrl struct {
 	CreatedAt string `json:"createdAt"`
 }
 
+// todo, for K8s should be DB/redis (if scaling a deployment data would be lost)
+// keep Id + longUrl
+var keepData = make(map[string]string)
+
 func (l *Handlers) Links(w http.ResponseWriter, r *http.Request) {
-
-	if r.URL.Path != postDir {
-		http.Error(w, "404 not found", http.StatusNotFound)
-		return
-	}
-
-	if r.Method != http.MethodPost {
-		http.Error(w, "403 Forbidden", http.StatusNotFound)
-		return
-	}
 
 	if r.Header.Get("Content-Type") != "" {
 		value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
@@ -67,13 +62,15 @@ func (l *Handlers) Links(w http.ResponseWriter, r *http.Request) {
 	}
 
 	current := time.Now()
-	ShortUrlID = genID()
-	RedirectURL = geturl.LongUrl
-	genShortURL := fmt.Sprintf("http://localhost%s/%s", l.serverAddress, ShortUrlID)
+	urlID := genID()
+	redirectURL := geturl.LongUrl
+	genShortURL := fmt.Sprintf("http://localhost%s/%s", l.serverAddress, urlID)
+
+	keepData[urlID] = redirectURL
 
 	dataurl := &dataUrl{
-		Id:        ShortUrlID,
-		LongUrl:   RedirectURL,
+		Id:        urlID,
+		LongUrl:   redirectURL,
 		ShortUrl:  genShortURL,
 		CreatedAt: current.Format("2006-01-02 15:04:0512"),
 	}
@@ -84,6 +81,15 @@ func (l *Handlers) Links(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write([]byte(b))
+}
+
+func (l *Handlers) Proxy(w http.ResponseWriter, r *http.Request) {
+	l.logger.Println("Proxy request processed")
+	for k, v := range keepData {
+		if r.URL.Path == "/"+k {
+			http.Redirect(w, r, v, http.StatusMovedPermanently)
+		}
+	}
 }
 
 func (l *Handlers) Logger(next http.HandlerFunc) http.HandlerFunc {
@@ -101,8 +107,9 @@ func NewHandlers(logger *log.Logger, serverAddress string) *Handlers {
 	}
 }
 
-func (l *Handlers) Routes(mux *http.ServeMux) {
-	mux.HandleFunc("/links", l.Logger(l.Links))
+func (l *Handlers) Routes(mux *mux.Router) {
+	mux.HandleFunc("/links", l.Logger(l.Links)).Methods("POST")
+	mux.HandleFunc("/{shortUrlID}", l.Logger(l.Proxy)).Methods("GET")
 }
 
 func genID() (randomID string) {

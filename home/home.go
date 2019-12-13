@@ -4,6 +4,8 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 const message = "url-shortener"
@@ -14,15 +16,7 @@ type Handlers struct {
 }
 
 func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
-
 	// h.logger.Println("Home request processed")
-
-	// if 'mux.NewRouter' then 404 by default
-	if r.URL.Path != homeDir {
-		http.Error(w, "404 not found", http.StatusNotFound)
-		return
-	}
-
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(message))
@@ -44,6 +38,6 @@ func NewHandlers(logger *log.Logger) *Handlers {
 	}
 }
 
-func (h *Handlers) Routes(mux *http.ServeMux) {
+func (h *Handlers) Routes(mux *mux.Router) {
 	mux.HandleFunc("/", h.Logger(h.Home))
 }

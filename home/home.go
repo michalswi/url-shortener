@@ -1,25 +1,46 @@
 package home
 
 import (
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gorilla/mux"
 )
 
-const message = "url-shortener"
 const homeDir = "/"
 
 type Handlers struct {
-	logger *log.Logger
+	logger  *log.Logger
+	version string
 }
 
 func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 	// h.logger.Println("Home request processed")
-	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+
+	message := "url-shortener"
+
+	// w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	// w.WriteHeader(http.StatusOK)
+	// w.Write([]byte(message))
+
+	hostname, err := os.Hostname()
+	if err != nil {
+		h.logger.Fatal(err)
+	}
+
+	version := h.version
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(message))
+
+	var html = `
+	<html>
+	<h1>%s</h1>
+	<p><b>Hostname</b>: %s; <b>Version</b>: %s</p>
+	</html>
+	`
+	fmt.Fprintf(w, html, message, hostname, version)
 }
 
 func (h *Handlers) Logger(next http.HandlerFunc) http.HandlerFunc {
@@ -32,9 +53,10 @@ func (h *Handlers) Logger(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func NewHandlers(logger *log.Logger) *Handlers {
+func NewHandlers(logger *log.Logger, version string) *Handlers {
 	return &Handlers{
-		logger: logger,
+		logger:  logger,
+		version: version,
 	}
 }
 

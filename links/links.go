@@ -1,12 +1,11 @@
 package links
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/golang/gddo/httputil/header"
@@ -23,6 +22,8 @@ var (
 type Handlers struct {
 	logger        *log.Logger
 	serverAddress string
+	storeAddress  string
+	dnsName       string
 }
 
 type getUrl struct {
@@ -37,11 +38,12 @@ type dataUrl struct {
 }
 
 type healthState struct {
-	State         string
-	ErrorMessages []string
+	State              string   `json:"state"`
+	UrlErrorMessages   []string `json:"urlerrormessages"`
+	Redis              string   `json:"redis"`
+	RedisErrorMessages []string `json:"rediserrormessages"`
 }
 
-// todo, for K8s should be DB/redis (if scaling a deployment data would be lost)
 // keep Id + longUrl
 var keepData = make(map[string]string)
 
@@ -67,10 +69,11 @@ func (l *Handlers) Links(w http.ResponseWriter, r *http.Request) {
 	}
 
 	current := time.Now()
-	urlID := genID()
+	urlID := genID(4)
 	redirectURL := geturl.LongUrl
-	genShortURL := fmt.Sprintf("http://localhost%s/%s", l.serverAddress, urlID)
+	genShortURL := fmt.Sprintf("http://%s:%s/%s", l.dnsName, l.serverAddress, urlID)
 
+	// cache
 	keepData[urlID] = redirectURL
 
 	dataurl := &dataUrl{
@@ -105,10 +108,12 @@ func (l *Handlers) Logger(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func NewHandlers(logger *log.Logger, serverAddress string) *Handlers {
+func NewHandlers(logger *log.Logger, serverAddress string, storeAddress string, dnsName string) *Handlers {
 	return &Handlers{
 		logger:        logger,
 		serverAddress: serverAddress,
+		storeAddress:  storeAddress,
+		dnsName:       dnsName,
 	}
 }
 
@@ -121,26 +126,50 @@ func (l *Handlers) Routes(mux *mux.Router) {
 func (l *Handlers) healthcheck(w http.ResponseWriter, r *http.Request) {
 	l.logger.Println("Healthcheck request processed")
 
+	hs := &healthState{}
+
+	// urlshortener
 	resWeb, err := http.Get(fmt.Sprintf("http://localhost:%s", l.serverAddress))
 	if err != nil {
-		log.Printf("Check failed: %v", err)
-	}
-	defer resWeb.Body.Close()
-
-	hs := healthState{}
-
-	// if err != nil || resWeb.StatusCode != 200 {
-	if resWeb.StatusCode != 200 {
-		log.Printf("Status code error: %d, Status error: %s\n", resWeb.StatusCode, resWeb.Status)
-		hs.ErrorMessages = append(hs.ErrorMessages, fmt.Sprintf("HealthError: %s", resWeb.Status))
-	}
-
-	if len(hs.ErrorMessages) > 0 {
-		hs.State = "NOK"
+		l.logger.Printf("Check failed: %v\n", err)
 	} else {
-		hs.State = "OK"
+		defer resWeb.Body.Close()
+
+		// if err != nil || resWeb.StatusCode != 200 {
+		if resWeb.StatusCode != 200 {
+			l.logger.Printf("Status code error: %d, Status error: %s\n", resWeb.StatusCode, resWeb.Status)
+			hs.UrlErrorMessages = append(hs.UrlErrorMessages, fmt.Sprintf("HealthError: %s", resWeb.Status))
+		}
+
+		if len(hs.UrlErrorMessages) > 0 {
+			hs.State = "NOK"
+		} else {
+			hs.State = "OK"
+		}
 	}
 
+	// redis
+	resRedis, err := http.Get(fmt.Sprintf("http://localhost:%s", l.storeAddress))
+	if err != nil {
+		l.logger.Printf("Check failed: %v", err)
+		hs.Redis = "NOK"
+		hs.RedisErrorMessages = append(hs.RedisErrorMessages, fmt.Sprintf("HealthError: %v", err))
+	} else {
+		defer resRedis.Body.Close()
+
+		if resRedis.StatusCode != 200 {
+			l.logger.Printf("Status code error: %d, Status error: %s\n", resRedis.StatusCode, resRedis.Status)
+			hs.RedisErrorMessages = append(hs.RedisErrorMessages, fmt.Sprintf("HealthError: %s", resRedis.Status))
+		}
+
+		if len(hs.RedisErrorMessages) > 0 {
+			hs.Redis = "NOK"
+		} else {
+			hs.Redis = "OK"
+		}
+	}
+
+	// both
 	b, err := json.Marshal(hs)
 	if err != nil {
 		log.Fatalf("Marshaling failed: %v\n", err)
@@ -150,16 +179,9 @@ func (l *Handlers) healthcheck(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(b))
 }
 
-func genID() (randomID string) {
-	rand.Seed(time.Now().UnixNano())
-	chars := []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
-		"abcdefghijklmnopqrstuvwxyz" +
-		"0123456789")
-	length := 8
-	var b strings.Builder
-	for i := 0; i < length; i++ {
-		b.WriteRune(chars[rand.Intn(len(chars))])
-	}
-	randomID = b.String()
-	return randomID
+// generate random ID
+func genID(length int) (randomID string) {
+	b := make([]byte, length)
+	rand.Read(b)
+	return fmt.Sprintf("%x", b)
 }

@@ -1,7 +1,7 @@
 ```
 [in progress]
 
-$ SERVICE_ADDR=:8080 go run main.go
+$ SERVICE_ADDR=8080 go run main.go
 
 $ curl -H "Content-Type: application/json" -X POST -d '{"longUrl":"https://golang.org/doc/effective_go.html"}' localhost:8080/links | jq
 {
@@ -20,3 +20,4 @@ Content-Length: 53
 
 <a href="https://golang.org/doc/effective_go.html">Moved Permanently</a>.
 ```
+

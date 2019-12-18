@@ -8,13 +8,12 @@ import (
 )
 
 func NewServer(r *mux.Router, serverAddress string) *http.Server {
-
 	srv := &http.Server{
-		Addr:         serverAddress,
+		Handler:      r,
+		Addr:         ":" + serverAddress,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  120 * time.Second,
-		Handler:      r,
 	}
 	return srv
 }

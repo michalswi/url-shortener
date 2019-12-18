@@ -36,6 +36,11 @@ type dataUrl struct {
 	CreatedAt string `json:"createdAt"`
 }
 
+type healthState struct {
+	State         string
+	ErrorMessages []string
+}
+
 // todo, for K8s should be DB/redis (if scaling a deployment data would be lost)
 // keep Id + longUrl
 var keepData = make(map[string]string)
@@ -109,7 +114,40 @@ func NewHandlers(logger *log.Logger, serverAddress string) *Handlers {
 
 func (l *Handlers) Routes(mux *mux.Router) {
 	mux.HandleFunc("/links", l.Logger(l.Links)).Methods("POST")
+	mux.HandleFunc("/health", l.Logger(l.healthcheck)).Methods("GET")
 	mux.HandleFunc("/{shortUrlID}", l.Logger(l.Proxy)).Methods("GET")
+}
+
+func (l *Handlers) healthcheck(w http.ResponseWriter, r *http.Request) {
+	l.logger.Println("Healthcheck request processed")
+
+	resWeb, err := http.Get(fmt.Sprintf("http://localhost:%s", l.serverAddress))
+	if err != nil {
+		log.Printf("Check failed: %v", err)
+	}
+	defer resWeb.Body.Close()
+
+	hs := healthState{}
+
+	// if err != nil || resWeb.StatusCode != 200 {
+	if resWeb.StatusCode != 200 {
+		log.Printf("Status code error: %d, Status error: %s\n", resWeb.StatusCode, resWeb.Status)
+		hs.ErrorMessages = append(hs.ErrorMessages, fmt.Sprintf("HealthError: %s", resWeb.Status))
+	}
+
+	if len(hs.ErrorMessages) > 0 {
+		hs.State = "NOK"
+	} else {
+		hs.State = "OK"
+	}
+
+	b, err := json.Marshal(hs)
+	if err != nil {
+		log.Fatalf("Marshaling failed: %v\n", err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(b))
 }
 
 func genID() (randomID string) {

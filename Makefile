@@ -19,19 +19,25 @@ DNS_NAME := localhost
 .DEFAULT_GOAL := all
 .PHONY: all test go-run go-build docker-build docker-run docker-stop docker-push release dockertest
 
-all: test go-build
+help:
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ \
+	{ printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+
+all: test go-build		## Run tests and build go binary
 
 test:
 	go test -v ./...
 
-go-run:
+go-run: 		## Run url-shortener - no binary
+	$(info -run - no binary-)
 	SERVICE_ADDR=$(SERVICE_ADDR) \
 	PPROF_ADDR=$(PPROF_ADDR) \
 	STORE_ADDR=$(STORE_ADDR) \
 	DNS_NAME=$(DNS_NAME) \
 	go run .	
 
-go-build:
+go-build: 		## Build url-shortener binary
+	$(info -build binary-)
 	CGO_ENABLED=0 \
 	go build \
 	-v \
@@ -42,7 +48,8 @@ go-build:
 	-X '$(GIT_REPO)/version.LastCommitTime=$(LAST_COMMIT_TIME)'" \
 	-o $(APPNAME)-$(VERSION) .
 
-docker-build:
+docker-build:	## Build docker image
+	$(info -build docker image-)
 	docker build \
 	--build-arg GOLANG_VERSION="$(GOLANG_VERSION)" \
 	--build-arg ALPINE_VERSION="$(ALPINE_VERSION)" \
@@ -57,20 +64,22 @@ docker-build:
 	--tag="$(DOCKER_REPO)/$(APPNAME):$(VERSION)" \
 	.
 
-docker-run:
+docker-run:		## Once docker image is ready run with default parameters
+	$(info -run docker-)
 	docker run -d --rm \
 	--name $(APPNAME) \
 	-p $(SERVICE_ADDR):$(SERVICE_ADDR) \
 	-p $(PPROF_ADDR):$(PPROF_ADDR) \
 	$(DOCKER_REPO)/$(APPNAME):latest
 
-docker-stop:
+docker-stop:	## Stop running docker
+	$(info -stop docker-)
 	docker stop $(APPNAME)	
 
 docker-push:
 	docker push $(DOCKER_REPO)/$(NAME):latest
 	docker push $(DOCKER_REPO)/$(NAME):$(VERSION)
 
-dockertest: docker-build docker-run
+dockertest: docker-build docker-run		## Build docker image and run
 
 release: docker-build docker-push

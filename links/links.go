@@ -117,7 +117,7 @@ func NewHandlers(logger *log.Logger, serverAddress string, storeAddress string, 
 	}
 }
 
-func (l *Handlers) Routes(mux *mux.Router) {
+func (l *Handlers) LinkRoutes(mux *mux.Router) {
 	mux.HandleFunc("/links", l.Logger(l.Links)).Methods("POST")
 	mux.HandleFunc("/health", l.Logger(l.healthcheck)).Methods("GET")
 	mux.HandleFunc("/{shortUrlID}", l.Logger(l.Proxy)).Methods("GET")

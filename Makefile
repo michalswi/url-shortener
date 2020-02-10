@@ -36,7 +36,7 @@ go-run: 		## Run url-shortener - no binary
 	DNS_NAME=$(DNS_NAME) \
 	go run .	
 
-go-build: 		## Build url-shortener binary
+go-build: 		## Build binary
 	$(info -build binary-)
 	CGO_ENABLED=0 \
 	go build \

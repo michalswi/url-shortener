@@ -31,8 +31,8 @@ func main() {
 	l := links.NewHandlers(logger, ServiceAddr, StoreAddr, DnsName)
 
 	r := mux.NewRouter()
-	h.Routes(r)
-	l.Routes(r)
+	h.LinkRoutes(r)
+	l.LinkRoutes(r)
 	srv := server.NewServer(r, ServiceAddr)
 
 	// start server

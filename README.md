@@ -14,6 +14,12 @@ Default **ENV** variables:
 /debug/pprof/goroutine
 ```  
 
+#### \# HELP
+
+```
+$ make help
+```
+
 
 #### \# TEST
 

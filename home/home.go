@@ -60,6 +60,6 @@ func NewHandlers(logger *log.Logger, version string) *Handlers {
 	}
 }
 
-func (h *Handlers) Routes(mux *mux.Router) {
+func (h *Handlers) LinkRoutes(mux *mux.Router) {
 	mux.HandleFunc("/", h.Logger(h.Home))
 }

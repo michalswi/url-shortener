@@ -77,9 +77,9 @@ docker-stop:	## Stop running docker
 	docker stop $(APPNAME)	
 
 docker-push:
-	docker push $(DOCKER_REPO)/$(NAME):latest
-	docker push $(DOCKER_REPO)/$(NAME):$(VERSION)
+	docker push $(DOCKER_REPO)/$(APPNAME):latest
+	# docker push $(DOCKER_REPO)/$(APPNAME):$(VERSION)
 
-dockertest: docker-build docker-run		## Build docker image and run
+docker-test: docker-build docker-run		## Build docker image and run
 
-release: docker-build docker-push
+docker-release: docker-push

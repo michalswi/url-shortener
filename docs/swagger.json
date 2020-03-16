@@ -5,12 +5,12 @@
         "description": "A sample API.",
         "version": "0.0.1"
     },
-    "host": "urlshort-demo-333.westeurope.azurecontainer.io",
+    "host": "<YOUR-APP-URL>",
     "schemes": [
         "http"
     ],
     "paths": {
-        "/": {
+        "/us/home": {
             "get": {
                 "description": "Home page",
                 "operationId": "test-get",
@@ -22,7 +22,7 @@
                 }
             }
         },
-        "/links": {
+        "/us/links": {
             "post": {
                 "description": "Generate link",
                 "operationId": "test-post",
@@ -34,11 +34,23 @@
                 }
             }
         },
-        "/health": {
+        "/us/health": {
             "get": {
                 "description": "Check health",
                 "operationId": "get-health",
                 "summary": "get health",
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        },
+        "/us/healthz": {
+            "get": {
+                "description": "Check healthZ",
+                "operationId": "get-healthz",
+                "summary": "get healthz",
                 "responses": {
                     "200": {
                         "description": "OK"

@@ -63,7 +63,14 @@ func (l *Handlers) Links(w http.ResponseWriter, r *http.Request) {
 	current := time.Now()
 	urlID := genID(4)
 	redirectURL := geturl.LongUrl
+
 	genShortURL := fmt.Sprintf("http://%s:%s%s/%s", l.dnsName, l.serverAddress, l.apipath, urlID)
+	// var genShortURL string
+	// if l.serverAddress == "80" {
+	// 	genShortURL = fmt.Sprintf("http://%s%s/%s", l.dnsName, l.apipath, urlID)
+	// } else {
+	// 	genShortURL = fmt.Sprintf("http://%s:%s%s/%s", l.dnsName, l.serverAddress, l.apipath, urlID)
+	// }
 
 	// cache
 	keepData[urlID] = redirectURL

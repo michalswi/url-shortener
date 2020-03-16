@@ -12,8 +12,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const postDir = "/links"
-
 var (
 	shortUrlID  string
 	redirectURL string
@@ -24,6 +22,7 @@ type Handlers struct {
 	serverAddress string
 	storeAddress  string
 	dnsName       string
+	apipath       string
 }
 
 type getUrl struct {
@@ -35,13 +34,6 @@ type dataUrl struct {
 	LongUrl   string `json:"longUrl"`
 	ShortUrl  string `json:"shortUrl"`
 	CreatedAt string `json:"createdAt"`
-}
-
-type healthState struct {
-	State              string   `json:"state"`
-	UrlErrorMessages   []string `json:"urlerrormessages"`
-	Redis              string   `json:"redis"`
-	RedisErrorMessages []string `json:"rediserrormessages"`
 }
 
 // keep Id + longUrl
@@ -71,7 +63,7 @@ func (l *Handlers) Links(w http.ResponseWriter, r *http.Request) {
 	current := time.Now()
 	urlID := genID(4)
 	redirectURL := geturl.LongUrl
-	genShortURL := fmt.Sprintf("http://%s:%s/%s", l.dnsName, l.serverAddress, urlID)
+	genShortURL := fmt.Sprintf("http://%s:%s%s/%s", l.dnsName, l.serverAddress, l.apipath, urlID)
 
 	// cache
 	keepData[urlID] = redirectURL
@@ -91,10 +83,11 @@ func (l *Handlers) Links(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(b))
 }
 
+// Proxy traffic to url base on shortUrl
 func (l *Handlers) Proxy(w http.ResponseWriter, r *http.Request) {
 	l.logger.Println("Proxy request processed")
 	for k, v := range keepData {
-		if r.URL.Path == "/"+k {
+		if r.URL.Path == l.apipath+"/"+k {
 			http.Redirect(w, r, v, http.StatusMovedPermanently)
 		}
 	}
@@ -108,78 +101,22 @@ func (l *Handlers) Logger(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func NewHandlers(logger *log.Logger, serverAddress string, storeAddress string, dnsName string) *Handlers {
+func NewHandlers(logger *log.Logger, serverAddress string, storeAddress string, dnsName string, apipath string) *Handlers {
 	return &Handlers{
 		logger:        logger,
 		serverAddress: serverAddress,
 		storeAddress:  storeAddress,
 		dnsName:       dnsName,
+		apipath:       apipath,
 	}
 }
 
 func (l *Handlers) LinkRoutes(mux *mux.Router) {
 	mux.HandleFunc("/links", l.Logger(l.Links)).Methods("POST")
-	mux.HandleFunc("/health", l.Logger(l.healthcheck)).Methods("GET")
 	mux.HandleFunc("/{shortUrlID}", l.Logger(l.Proxy)).Methods("GET")
 }
 
-func (l *Handlers) healthcheck(w http.ResponseWriter, r *http.Request) {
-	l.logger.Println("Healthcheck request processed")
-
-	hs := &healthState{}
-
-	// urlshortener
-	resWeb, err := http.Get(fmt.Sprintf("http://localhost:%s", l.serverAddress))
-	if err != nil {
-		l.logger.Printf("Check failed: %v\n", err)
-	} else {
-		defer resWeb.Body.Close()
-
-		// if err != nil || resWeb.StatusCode != 200 {
-		if resWeb.StatusCode != 200 {
-			l.logger.Printf("Status code error: %d, Status error: %s\n", resWeb.StatusCode, resWeb.Status)
-			hs.UrlErrorMessages = append(hs.UrlErrorMessages, fmt.Sprintf("HealthError: %s", resWeb.Status))
-		}
-
-		if len(hs.UrlErrorMessages) > 0 {
-			hs.State = "NOK"
-		} else {
-			hs.State = "OK"
-		}
-	}
-
-	// redis
-	resRedis, err := http.Get(fmt.Sprintf("http://localhost:%s", l.storeAddress))
-	if err != nil {
-		l.logger.Printf("Check failed: %v", err)
-		hs.Redis = "NOK"
-		hs.RedisErrorMessages = append(hs.RedisErrorMessages, fmt.Sprintf("HealthError: %v", err))
-	} else {
-		defer resRedis.Body.Close()
-
-		if resRedis.StatusCode != 200 {
-			l.logger.Printf("Status code error: %d, Status error: %s\n", resRedis.StatusCode, resRedis.Status)
-			hs.RedisErrorMessages = append(hs.RedisErrorMessages, fmt.Sprintf("HealthError: %s", resRedis.Status))
-		}
-
-		if len(hs.RedisErrorMessages) > 0 {
-			hs.Redis = "NOK"
-		} else {
-			hs.Redis = "OK"
-		}
-	}
-
-	// both
-	b, err := json.Marshal(hs)
-	if err != nil {
-		log.Fatalf("Marshaling failed: %v\n", err)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(b))
-}
-
-// generate random ID
+// Generate random ID
 func genID(length int) (randomID string) {
 	b := make([]byte, length)
 	rand.Read(b)

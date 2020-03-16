@@ -10,8 +10,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const homeDir = "/"
-
 type Handlers struct {
 	logger  *log.Logger
 	version string
@@ -28,7 +26,7 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		h.logger.Fatal(err)
+		h.logger.Printf("Get 'host name' failed: %v\n", err)
 	}
 
 	version := h.version
@@ -61,5 +59,5 @@ func NewHandlers(logger *log.Logger, version string) *Handlers {
 }
 
 func (h *Handlers) LinkRoutes(mux *mux.Router) {
-	mux.HandleFunc("/", h.Logger(h.Home))
+	mux.HandleFunc("/home", h.Logger(h.Home))
 }

@@ -7,12 +7,31 @@ Default **ENV** variables:
 `STORE_ADDR=6379`     - redis port [in progress]  
 `DNS_NAME=localhost`  - if running on Azure instead of `localhost` has to be `FQDN`, example in the Azure part  
 
-**pprof** endpoints:  
+#### \# ENDPOINTS
+
+**pprof**:  
 ```
 /debug/pprof/
 /debug/pprof/trace
 /debug/pprof/goroutine
 ```  
+
+**url-shortener**:
+```
+# PREFIX
+
+/us
+
+# GET
+
+/home
+/health
+/healthz
+
+# POST
+
+/links
+```
 
 #### \# HELP
 
@@ -34,14 +53,15 @@ $ make docker-build
 
 $ make docker-run
 
-$ curl localhost:8080
+$ curl localhost:8080/us/home
 url-shortener
 Hostname: 924d217ffca0; Version: 0.0.1
 
+$ curl localhost:8080/us/healthz
+OK
 
 # redis [in progress]
-
-$ curl localhost:8080/health | jq
+$ curl localhost:8080/us/health | jq
 {
   "state": "OK",
   "urlerrormessages": null,
@@ -57,7 +77,7 @@ $ curl localhost:8080/health | jq
 $ curl -X POST \
 -H "Content-Type: application/json" \
 -d '{"longUrl":"https://google.com"}' \
-localhost:8080/links | jq
+localhost:8080/us/links | jq
 {
   "id": "43600b9c",
   "longUrl": "https://google.com",
@@ -65,22 +85,8 @@ localhost:8080/links | jq
   "createdAt": "2020-01-09 20:34:2419"
 }
 
-$ curl -X POST \
--H "Content-Type: application/json" \
--d '{"longUrl":"https://amazon.com"}' \
-localhost:8080/links | jq
-{
-  "id": "614a1913",
-  "longUrl": "https://amazon.com",
-  "shortUrl": "http://localhost:8080/614a1913",
-  "createdAt": "2020-01-09 20:34:3519"
-}
-
 $ curl http://localhost:8080/43600b9c
 <a href="https://google.com">Moved Permanently</a>.
-
-$ curl http://localhost:8080/614a1913
-<a href="https://amazon.com">Moved Permanently</a>.
 
 
 # clear

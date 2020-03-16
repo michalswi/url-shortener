@@ -12,12 +12,13 @@ import (
 
 	"github.com/gorilla/mux"
 
+	"github.com/michalswi/url-shortener/health"
 	"github.com/michalswi/url-shortener/home"
 	"github.com/michalswi/url-shortener/links"
 	"github.com/michalswi/url-shortener/server"
 )
 
-var version = "0.0.1"
+var version = "0.1.1"
 
 func main() {
 	logger := log.New(os.Stdout, "shortener ", log.LstdFlags|log.Lshortfile)
@@ -25,15 +26,21 @@ func main() {
 	ServiceAddr := os.Getenv("SERVICE_ADDR")
 	PprofAddr := os.Getenv("PPROF_ADDR")
 	StoreAddr := os.Getenv("STORE_ADDR")
-	DnsName := os.Getenv("DNS_NAME")
+	DNSname := os.Getenv("DNS_NAME")
 
+	APIPath := "/us"
+
+	hz := health.NewHandlers(logger, ServiceAddr, APIPath, StoreAddr)
 	h := home.NewHandlers(logger, version)
-	l := links.NewHandlers(logger, ServiceAddr, StoreAddr, DnsName)
+	l := links.NewHandlers(logger, ServiceAddr, StoreAddr, DNSname, APIPath)
 
 	r := mux.NewRouter()
-	h.LinkRoutes(r)
-	l.LinkRoutes(r)
-	srv := server.NewServer(r, ServiceAddr)
+	prefix := r.PathPrefix(APIPath).Subrouter()
+
+	hz.LinkRoutes(prefix)
+	h.LinkRoutes(prefix)
+	l.LinkRoutes(prefix)
+	srv := server.NewServer(prefix, ServiceAddr)
 
 	// start server
 	go func() {

@@ -20,6 +20,7 @@ RUN go mod download
 ARG VERSION
 ARG APPNAME
 
+COPY --chown=dummy health health
 COPY --chown=dummy home home
 COPY --chown=dummy links links
 COPY --chown=dummy server server

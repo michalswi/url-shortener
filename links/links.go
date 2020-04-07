@@ -44,7 +44,7 @@ func (l *Handlers) Links(w http.ResponseWriter, r *http.Request) {
 	if r.Header.Get("Content-Type") != "" {
 		value, _ := header.ParseValueAndParams(r.Header, "Content-Type")
 		if value != "application/json" {
-			msg := "Content-Type header is not application/json"
+			msg := "content-Type header is not application/json"
 			http.Error(w, msg, http.StatusUnsupportedMediaType)
 			return
 		}
@@ -84,7 +84,9 @@ func (l *Handlers) Links(w http.ResponseWriter, r *http.Request) {
 
 	b, err := json.Marshal(dataurl)
 	if err != nil {
-		l.logger.Printf("Marshaling failed: %v\n", err)
+		l.logger.Printf("Marshaling failed: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	w.Write([]byte(b))
@@ -103,7 +105,7 @@ func (l *Handlers) Proxy(w http.ResponseWriter, r *http.Request) {
 func (l *Handlers) Logger(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		startTime := time.Now()
-		defer l.logger.Printf("Links request processed in %s\n", time.Now().Sub(startTime))
+		defer l.logger.Printf("Links request processed in %s", time.Now().Sub(startTime))
 		next(w, r)
 	}
 }

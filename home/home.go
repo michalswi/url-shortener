@@ -26,19 +26,20 @@ func (h *Handlers) Home(w http.ResponseWriter, r *http.Request) {
 
 	hostname, err := os.Hostname()
 	if err != nil {
-		h.logger.Printf("Get 'host name' failed: %v\n", err)
+		h.logger.Printf("Get 'host name' failed: %v", err)
+		return
 	}
 
 	version := h.version
 	w.WriteHeader(http.StatusOK)
 
-	var html = `
+	var rawHTML = `
 	<html>
 	<h1>%s</h1>
 	<p><b>Hostname</b>: %s; <b>Version</b>: %s</p>
 	</html>
 	`
-	fmt.Fprintf(w, html, message, hostname, version)
+	fmt.Fprintf(w, rawHTML, message, hostname, version)
 }
 
 func (h *Handlers) Logger(next http.HandlerFunc) http.HandlerFunc {
@@ -46,7 +47,7 @@ func (h *Handlers) Logger(next http.HandlerFunc) http.HandlerFunc {
 	// h.logger.Println("Home request processed")
 	return func(w http.ResponseWriter, r *http.Request) {
 		startTime := time.Now()
-		defer h.logger.Printf("Home request processed in %s\n", time.Now().Sub(startTime))
+		defer h.logger.Printf("Home request processed in %s", time.Now().Sub(startTime))
 		next(w, r)
 	}
 }

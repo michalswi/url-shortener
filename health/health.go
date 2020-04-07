@@ -44,7 +44,7 @@ func (h *Handlers) Logger(next http.HandlerFunc) http.HandlerFunc {
 	// h.logger.Println("Home request processed")
 	return func(w http.ResponseWriter, r *http.Request) {
 		startTime := time.Now()
-		defer h.logger.Printf("Health request processed in %s\n", time.Now().Sub(startTime))
+		defer h.logger.Printf("Health request processed in %s", time.Now().Sub(startTime))
 		next(w, r)
 	}
 }
@@ -58,12 +58,12 @@ func (h *Handlers) healthcheck(w http.ResponseWriter, r *http.Request) {
 	// urlshortener
 	resWeb, err := http.Get(fmt.Sprintf("http://localhost:%s%s/ok", h.serverAddress, h.apiprefix))
 	if err != nil {
-		h.logger.Printf("Check failed: %v\n", err)
+		h.logger.Printf("Check failed: %v", err)
 	} else {
 		defer resWeb.Body.Close()
 		// if err != nil || resWeb.StatusCode != 200 {
 		if resWeb.StatusCode != 200 {
-			h.logger.Printf("Status code error: %d, Status error: %s\n", resWeb.StatusCode, resWeb.Status)
+			h.logger.Printf("Status code error: %d, Status error: %s", resWeb.StatusCode, resWeb.Status)
 			hs.UrlErrorMessages = append(hs.UrlErrorMessages, fmt.Sprintf("HealthError: %s", resWeb.Status))
 		}
 		if len(hs.UrlErrorMessages) > 0 {
@@ -82,7 +82,7 @@ func (h *Handlers) healthcheck(w http.ResponseWriter, r *http.Request) {
 	} else {
 		defer resRedis.Body.Close()
 		if resRedis.StatusCode != 200 {
-			h.logger.Printf("Status code error: %d, Status error: %s\n", resRedis.StatusCode, resRedis.Status)
+			h.logger.Printf("Status code error: %d, Status error: %s", resRedis.StatusCode, resRedis.Status)
 			hs.RedisErrorMessages = append(hs.RedisErrorMessages, fmt.Sprintf("HealthError: %s", resRedis.Status))
 		}
 		if len(hs.RedisErrorMessages) > 0 {
@@ -94,8 +94,11 @@ func (h *Handlers) healthcheck(w http.ResponseWriter, r *http.Request) {
 	// both
 	b, err := json.Marshal(hs)
 	if err != nil {
-		h.logger.Printf("Marshaling failed: %v\n", err)
+		h.logger.Printf("Marshaling failed: %v", err)
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(b))
 }
@@ -105,12 +108,12 @@ func (h *Handlers) healthz(w http.ResponseWriter, r *http.Request) {
 	h.logger.Println("healthz request processed")
 	resWeb, err := http.Get(fmt.Sprintf("http://localhost:%s%s/ok", h.serverAddress, h.apiprefix))
 	if err != nil {
-		h.logger.Printf("Check failed: %v\n", err)
+		h.logger.Printf("Check failed: %v", err)
 	} else {
 		defer resWeb.Body.Close()
 		// if err != nil || resWeb.StatusCode != 200 {
 		if resWeb.StatusCode != 200 {
-			h.logger.Printf("Status code error: %d, Status error: %s\n", resWeb.StatusCode, resWeb.Status)
+			h.logger.Printf("Status code error: %d, Status error: %s", resWeb.StatusCode, resWeb.Status)
 			w.Write([]byte("NOK"))
 		} else {
 			w.Write([]byte("OK"))
@@ -120,6 +123,6 @@ func (h *Handlers) healthz(w http.ResponseWriter, r *http.Request) {
 
 // Endpoint for health checks
 func (h *Handlers) statusOK(w http.ResponseWriter, r *http.Request) {
-	h.logger.Printf("statusOK processed\n")
+	h.logger.Printf("statusOK processed")
 	w.WriteHeader(http.StatusOK)
 }

@@ -47,7 +47,7 @@ func main() {
 		logger.Printf("Starting server on port %s \n", ServiceAddr)
 		err := srv.ListenAndServe()
 		if err != nil {
-			logger.Fatalf("Server failed to start: %v", err)
+			logger.Printf("Server failed to start: %v", err)
 		}
 	}()
 

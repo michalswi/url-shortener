@@ -11,24 +11,24 @@ LAST_COMMIT_USER ?= $(shell git log -1 --format='%cn <%ce>')
 LAST_COMMIT_HASH ?= $(shell git log -1 --format=%H)
 LAST_COMMIT_TIME ?= $(shell git log -1 --format=%cd --date=format:'%Y-%m-%d %H:%M:%S')
 
-SERVICE_ADDR := 8080
-PPROF_ADDR := 5050
-STORE_ADDR := 6379
-DNS_NAME := localhost
+SERVICE_ADDR ?= 8080
+PPROF_ADDR ?= 5050
+STORE_ADDR ?= 6379
+DNS_NAME ?= localhost
 
-.DEFAULT_GOAL := all
-.PHONY: all test go-run go-build docker-build docker-run docker-stop docker-push release dockertest
+.DEFAULT_GOAL := help
+.PHONY: all test go-run go-build docker-build docker-run docker-stop docker-push docker-test docker-release
 
 help:
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ \
 	{ printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
-all: test go-build		## Run tests and build go binary
+all: test go-build ## Run tests and build go binary
 
-test:
+test: ## go tests
 	go test -v ./...
 
-go-run: 		## Run url-shortener - no binary
+go-run: ## Run url-shortener - no binary
 	$(info -run - no binary-)
 	SERVICE_ADDR=$(SERVICE_ADDR) \
 	PPROF_ADDR=$(PPROF_ADDR) \
@@ -36,7 +36,7 @@ go-run: 		## Run url-shortener - no binary
 	DNS_NAME=$(DNS_NAME) \
 	go run .	
 
-go-build: 		## Build binary
+go-build: ## Build binary
 	$(info -build binary-)
 	CGO_ENABLED=0 \
 	go build \
@@ -48,9 +48,10 @@ go-build: 		## Build binary
 	-X '$(GIT_REPO)/version.LastCommitTime=$(LAST_COMMIT_TIME)'" \
 	-o $(APPNAME)-$(VERSION) .
 
-docker-build:	## Build docker image
+docker-build: ## Build docker image
 	$(info -build docker image-)
 	docker build \
+	--pull \
 	--build-arg GOLANG_VERSION="$(GOLANG_VERSION)" \
 	--build-arg ALPINE_VERSION="$(ALPINE_VERSION)" \
 	--build-arg APPNAME="$(APPNAME)" \
@@ -64,7 +65,7 @@ docker-build:	## Build docker image
 	--tag="$(DOCKER_REPO)/$(APPNAME):$(VERSION)" \
 	.
 
-docker-run:		## Once docker image is ready run with default parameters
+docker-run: ## Once docker image is ready run with default parameters
 	$(info -run docker-)
 	docker run -d --rm \
 	--name $(APPNAME) \
@@ -72,7 +73,7 @@ docker-run:		## Once docker image is ready run with default parameters
 	-p $(PPROF_ADDR):$(PPROF_ADDR) \
 	$(DOCKER_REPO)/$(APPNAME):latest
 
-docker-stop:	## Stop running docker
+docker-stop: ## Stop running docker
 	$(info -stop docker-)
 	docker stop $(APPNAME)	
 
@@ -80,6 +81,6 @@ docker-push:
 	docker push $(DOCKER_REPO)/$(APPNAME):latest
 	# docker push $(DOCKER_REPO)/$(APPNAME):$(VERSION)
 
-docker-test: docker-build docker-run		## Build docker image and run
+docker-test: docker-build docker-run ## Build docker image and run
 
 docker-release: docker-push
